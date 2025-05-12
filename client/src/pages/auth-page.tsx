@@ -78,7 +78,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md mb-6">
         <h2 className="text-center text-3xl font-extrabold text-gray-900">
-          Welcome to Optisizer
+          Welcome to <span className="text-primary">Opti</span><span className="text-black">sizer</span>
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Sign in or create an account to save your resized images

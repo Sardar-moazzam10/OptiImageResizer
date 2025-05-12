@@ -27,7 +27,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link href="/">
               <div className="flex-shrink-0 flex items-center cursor-pointer">
-                <span className="text-primary text-xl font-bold">Opti<span className="text-secondary">sizer</span></span>
+                <span className="text-primary text-xl font-bold">Opti<span className="text-black">sizer</span></span>
               </div>
             </Link>
           </div>

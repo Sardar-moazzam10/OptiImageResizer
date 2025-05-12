@@ -24,7 +24,7 @@ export default function Footer() {
             </a>
           </div>
           <div className="mt-8 md:mt-0 md:order-1">
-            <p className="text-center text-base text-gray-500">© 2023 Optisizer. All rights reserved.</p>
+            <p className="text-center text-base text-gray-500">© 2023 <span className="text-primary">Opti</span><span className="text-black">sizer</span>. All rights reserved.</p>
           </div>
         </div>
       </div>

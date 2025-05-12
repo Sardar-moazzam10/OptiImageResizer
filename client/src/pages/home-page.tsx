@@ -47,7 +47,7 @@ export default function HomePage() {
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-semibold text-gray-900 mb-2">Advanced Image Resizing</h1>
+        <h1 className="text-3xl font-semibold text-gray-900 mb-2"><span className="text-primary">Opti</span><span className="text-black">sizer</span> - Advanced Image Resizing</h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
           Resize your images with precision for any platform while maintaining quality
         </p>
