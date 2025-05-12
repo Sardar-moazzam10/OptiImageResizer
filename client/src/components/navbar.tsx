@@ -26,9 +26,9 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link href="/">
-              <a className="flex-shrink-0 flex items-center">
+              <div className="flex-shrink-0 flex items-center cursor-pointer">
                 <span className="text-primary text-xl font-bold">Opti<span className="text-secondary">sizer</span></span>
-              </a>
+              </div>
             </Link>
           </div>
 
