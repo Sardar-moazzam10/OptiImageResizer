@@ -40,7 +40,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
-  
+
   // Create forms
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -49,7 +49,7 @@ export default function AuthPage() {
       password: "",
     },
   });
-  
+
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -58,17 +58,17 @@ export default function AuthPage() {
       confirmPassword: "",
     },
   });
-  
+
   // Handle form submissions
   const onLoginSubmit = (values: LoginFormValues) => {
     loginMutation.mutate(values);
   };
-  
+
   const onRegisterSubmit = (values: RegisterFormValues) => {
     const { confirmPassword, ...userData } = values;
     registerMutation.mutate(userData);
   };
-  
+
   // If user is already logged in, redirect to homepage
   if (user) {
     return <Redirect to="/" />;
@@ -77,7 +77,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md mb-6">
-        <h2 className="text-center text-3xl font-extrabold text-gray-900">
+        <h2 className="text-center text-4xl font-extrabold text-gray-900">
           Welcome to <span className="text-primary">Opti</span><span className="text-black">sizer</span>
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
@@ -185,7 +185,7 @@ export default function AuthPage() {
             </Tabs>
           </Card>
         </div>
-        
+
         <div className="md:col-span-3 bg-gradient-to-br from-primary to-secondary rounded-lg text-white p-8 flex flex-col justify-center">
           <div className="mb-6">
             <h2 className="text-3xl font-bold mb-4">Transform Your Images</h2>

@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, User } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -68,10 +69,22 @@ export default function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
+                  <AnimatePresence>
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    >
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        className="cursor-pointer focus:bg-red-50 focus:text-red-600 transition-colors duration-200"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                      </DropdownMenuItem>
+                    </motion.div>
+                  </AnimatePresence>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

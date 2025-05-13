@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ImageUploader from "@/components/image-uploader";
 import ImagePreview from "@/components/image-preview";
 import { useAuth } from "@/hooks/use-auth";
+import { motion } from "framer-motion";
+import { Sparkles, Zap, Shield } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -11,12 +13,17 @@ export default function HomePage() {
   const [scale, setScale] = useState(100);
   const [aspectRatioLocked, setAspectRatioLocked] = useState(true);
   const [selectedFormat, setSelectedFormat] = useState<string>("jpg");
-  
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
+
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
     const objectUrl = URL.createObjectURL(file);
     setImageUrl(objectUrl);
-    
+
     // Get image dimensions
     const img = new Image();
     img.onload = () => {
@@ -31,31 +38,43 @@ export default function HomePage() {
   const handleDimensionsChange = (newDimensions: { width: number; height: number }) => {
     setDimensions(newDimensions);
   };
-  
+
   const handleScaleChange = (newScale: number) => {
     setScale(newScale);
   };
-  
+
   const handleAspectRatioLockChange = (locked: boolean) => {
     setAspectRatioLocked(locked);
   };
-  
+
   const handleFormatChange = (format: string) => {
     setSelectedFormat(format);
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-semibold text-gray-900 mb-2"><span className="text-primary">Opti</span><span className="text-black">sizer</span> - Advanced Image Resizing</h1>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Resize your images with precision for any platform while maintaining quality
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 bg-gradient-to-b from-white to-gray-50 min-h-screen">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+        transition={{ duration: 0.6 }}
+        className="mb-12 text-center"
+      >
+        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <span className="text-primary">Opti</span><span className="text-black">sizer</span>
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+          Transform your images with precision and style. Professional resizing tools for the modern creator.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="flex flex-col lg:flex-row gap-8 bg-white rounded-2xl shadow-xl p-6 border border-gray-100"
+      >
         <div className="lg:w-7/12 order-2 lg:order-1">
-          <ImageUploader 
+          <ImageUploader
             selectedFile={selectedFile}
             imageUrl={imageUrl}
             dimensions={dimensions}
@@ -69,51 +88,92 @@ export default function HomePage() {
             onFormatChange={handleFormatChange}
           />
         </div>
-        
+
         <div className="lg:w-5/12 order-1 lg:order-2">
-          <ImagePreview 
+          <ImagePreview
             imageUrl={imageUrl}
             dimensions={dimensions}
+            scale={scale}
+            format={selectedFormat}
+            maintainAspectRatio={aspectRatioLocked}
           />
         </div>
-      </div>
+      </motion.div>
 
-      <div className="mt-20">
-        <h2 className="text-2xl font-semibold text-center mb-12">Why Choose Optisizer</h2>
-        
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 40 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="mt-24"
+      >
+        <h2 className="text-3xl font-bold text-center mb-16 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+          Why Choose Optisizer
+        </h2>
+
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
+          <motion.div
+            whileHover={{ scale: 1.05, y: -5 }}
+            whileTap={{ scale: 0.98 }}
+            className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:border-primary/20 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center mb-6 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Sparkles className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors duration-300">Lossless Resizing</h3>
+              <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">
+                Experience crystal-clear image quality with our advanced resizing algorithms. No compromise on quality.
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Lossless Resizing</h3>
-            <p className="text-gray-600">Maintain image quality even after resizing with our advanced algorithms.</p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-4.5-8.5" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 8V2m-2 6h4" />
-              </svg>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.05, y: -5 }}
+            whileTap={{ scale: 0.98 }}
+            className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:border-yellow-400/20 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl flex items-center justify-center mb-6 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Zap className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-yellow-500 transition-colors duration-300">Social Media Ready</h3>
+              <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">
+                Perfect your images for any platform with our smart presets. Instagram, Facebook, Twitter - we've got you covered.
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Social Media Ready</h3>
-            <p className="text-gray-600">Optimize your images for any social platform with our pre-set aspect ratios.</p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.05, y: -5 }}
+            whileTap={{ scale: 0.98 }}
+            className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:border-green-500/20 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-6 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Shield className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-green-500 transition-colors duration-300">Precise Control</h3>
+              <p className="text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors duration-300">
+                Take command of every pixel with our intuitive controls. Perfect dimensions, perfect results.
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Precise Control</h3>
-            <p className="text-gray-600">Fine-tune your images with exact dimensions, scale percentage, and format options.</p>
-          </div>
+          </motion.div>
         </div>
-      </div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isVisible ? 1 : 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-20 text-center"
+        >
+          <div className="inline-block px-6 py-3 bg-blue-500 rounded-full text-white font-medium shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer">
+            Start Optimizing Your Images
+          </div>
+        </motion.div>
+      </motion.div>
     </main>
   );
 }
