@@ -1,15 +1,20 @@
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { useCallback, useState, useRef } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { measureAsync } from '@/lib/performance';
+import { debounce } from '@/lib/utils';
 import { Loader2, UploadCloud, Download } from "lucide-react";
 import AspectRatioPresets from "./aspect-ratio-presets";
 import FormatSelector from "./format-selector";
 import ResizeControls from "./resize-controls";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 
 interface ImageUploaderProps {
   selectedFile: File | null;
@@ -25,6 +30,13 @@ interface ImageUploaderProps {
   onFormatChange: (format: string) => void;
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ACCEPTED_FORMATS: Record<string, string[]> = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/webp': ['.webp']
+};
+
 export default function ImageUploader({
   selectedFile,
   imageUrl,
@@ -36,58 +48,105 @@ export default function ImageUploader({
   onDimensionsChange,
   onScaleChange,
   onAspectRatioLockChange,
-  onFormatChange,
+  onFormatChange
 }: ImageUploaderProps) {
   const { toast } = useToast();
-  const [isDownloading, setIsDownloading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const aspectRatio = dimensions.width / dimensions.height;
+  const [isProcessing, setIsProcessing] = useState(false);
+  const originalAspectRatio = useRef(1);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      onFileSelect(e.target.files[0]);
+  // Debounced dimension changes to prevent too many updates
+  const debouncedDimensionsChange = useCallback(
+    debounce((newDimensions: { width: number; height: number }) => {
+      onDimensionsChange(newDimensions);
+    }, 300),
+    [onDimensionsChange]
+  );
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    try {
+      const file = acceptedFiles[0];
+
+      if (!file) return;
+
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: 'File too large',
+          description: 'Maximum file size is 10MB',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      setIsProcessing(true);
+
+      await measureAsync(async () => {
+        // Create object URL
+        const objectUrl = URL.createObjectURL(file);
+
+        // Load image and get dimensions
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = objectUrl;
+        });
+
+        // Store original aspect ratio
+        originalAspectRatio.current = img.width / img.height;
+
+        // Update dimensions
+        onDimensionsChange({
+          width: img.width,
+          height: img.height
+        });
+
+        onFileSelect(file);
+      }, 'Image Loading');
+
+    } catch (error) {
+      console.error('Error processing image:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to process image',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsProcessing(false);
     }
-  };
+  }, [onFileSelect, onDimensionsChange, toast]);
 
-  const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: ACCEPTED_FORMATS as Record<string, string[]>,
+    maxFiles: 1,
+    multiple: false,
+    onDragEnter: (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
+    },
+    onDragLeave: (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
+    },
+    onDragOver: (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
     }
-  };
+  });
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.currentTarget.classList.add("border-primary");
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove("border-primary");
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove("border-primary");
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      onFileSelect(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleWidthChange = (width: number) => {
-    const newDimensions = { ...dimensions, width };
+  const handleWidthChange = (newWidth: number) => {
     if (aspectRatioLocked) {
-      newDimensions.height = Math.round(width / aspectRatio);
+      const newHeight = Math.round(newWidth / originalAspectRatio.current);
+      debouncedDimensionsChange({ width: newWidth, height: newHeight });
+    } else {
+      debouncedDimensionsChange({ ...dimensions, width: newWidth });
     }
-    onDimensionsChange(newDimensions);
   };
 
-  const handleHeightChange = (height: number) => {
-    const newDimensions = { ...dimensions, height };
+  const handleHeightChange = (newHeight: number) => {
     if (aspectRatioLocked) {
-      newDimensions.width = Math.round(height * aspectRatio);
+      const newWidth = Math.round(newHeight * originalAspectRatio.current);
+      debouncedDimensionsChange({ width: newWidth, height: newHeight });
+    } else {
+      debouncedDimensionsChange({ ...dimensions, height: newHeight });
     }
-    onDimensionsChange(newDimensions);
   };
 
   const handleAspectRatioPresetSelect = (width: number, height: number) => {
@@ -99,44 +158,44 @@ export default function ImageUploader({
 
   const handleDownload = async () => {
     if (!selectedFile) return;
-    
-    setIsDownloading(true);
-    
+
+    setIsProcessing(true);
+
     try {
       const formData = new FormData();
       formData.append('image', selectedFile);
-      
+
       const queryParams = new URLSearchParams({
         width: dimensions.width.toString(),
         height: dimensions.height.toString(),
         format: selectedFormat,
         scale: scale.toString(),
       });
-      
+
       const response = await fetch(`/api/resize?${queryParams}`, {
         method: 'POST',
         body: formData,
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to resize image');
       }
-      
+
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      
+
       // Create an anchor and trigger download
       const a = document.createElement('a');
       a.href = url;
       a.download = `resized-image.${selectedFormat}`;
       document.body.appendChild(a);
       a.click();
-      
+
       // Clean up
       URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast({
         title: "Image downloaded",
         description: "Your resized image has been downloaded successfully.",
@@ -148,122 +207,149 @@ export default function ImageUploader({
         variant: "destructive",
       });
     } finally {
-      setIsDownloading(false);
+      setIsProcessing(false);
     }
   };
 
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div
-          className={`border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:bg-gray-50 transition-all mb-6 ${selectedFile ? 'border-primary' : ''}`}
-          onClick={handleUploadClick}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={handleFileChange}
-          />
-          
-          {!selectedFile ? (
-            <div className="flex flex-col items-center justify-center">
-              <UploadCloud className="h-12 w-12 text-gray-400 mb-3" />
-              <p className="text-lg font-medium text-gray-700 mb-1">Drop your image here</p>
-              <p className="text-gray-500">or click to browse</p>
-              <p className="text-gray-400 text-sm mt-2">Supports JPG, PNG, WebP, SVG</p>
-            </div>
-          ) : (
-            <div className="flex items-center text-primary">
-              <div className="flex-shrink-0 mr-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-grow text-left">
-                <p className="font-medium">{selectedFile.name}</p>
-                <p className="text-gray-500 text-sm">
-                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                </p>
-              </div>
-              <p className="text-gray-500 text-sm">Click or drag to replace</p>
-            </div>
-          )}
-        </div>
-
-        <div className={`${selectedFile ? '' : 'opacity-50 pointer-events-none'}`}>
-          <div className="mb-6">
-            <h3 className="text-base font-medium text-gray-900 mb-3">Aspect Ratio Presets</h3>
-            <AspectRatioPresets onSelect={handleAspectRatioPresetSelect} />
-          </div>
-
-          <div className="mb-6">
-            <div className="flex justify-between mb-3">
-              <h3 className="text-base font-medium text-gray-900">Custom Dimensions</h3>
-              <div className="flex items-center">
-                <span className="text-sm text-gray-500 mr-2">Lock aspect ratio</span>
-                <Switch
-                  checked={aspectRatioLocked}
-                  onCheckedChange={onAspectRatioLockChange}
-                  id="lock-aspect-ratio"
-                />
-              </div>
-            </div>
-
-            <ResizeControls
-              width={dimensions.width}
-              height={dimensions.height}
-              onWidthChange={handleWidthChange}
-              onHeightChange={handleHeightChange}
-            />
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-base font-medium text-gray-900 mb-3">Scale</h3>
-            <div className="flex items-center gap-3">
-              <Input
-                type="range"
-                min="10"
-                max="200"
-                value={scale}
-                onChange={(e) => onScaleChange(parseInt(e.target.value, 10))}
-                className="w-full"
-              />
-              <div className="w-16 text-center">
-                <span className="text-base font-medium">{scale}</span>%
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-base font-medium text-gray-900 mb-3">Format</h3>
-            <FormatSelector
-              selectedFormat={selectedFormat}
-              onChange={onFormatChange}
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              variant="default"
-              className="bg-[#10B981] hover:bg-emerald-600"
-              onClick={handleDownload}
-              disabled={!selectedFile || isDownloading}
+    <div className="space-y-6">
+      <div
+        {...getRootProps()}
+        className={`
+          border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+          transition-colors duration-200
+          ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50'}
+          ${isProcessing ? 'opacity-50 cursor-wait' : ''}
+        `}
+      >
+        <input {...getInputProps()} disabled={isProcessing} />
+        <AnimatePresence mode="wait">
+          {isProcessing ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center"
             >
-              {isDownloading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              Download
-            </Button>
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="mt-2 text-sm text-gray-600">Processing image...</p>
+            </motion.div>
+          ) : imageUrl ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-sm text-gray-600"
+            >
+              <p>Drop a new image to replace the current one</p>
+              <p className="mt-1 text-xs">or click to browse</p>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center text-sm text-gray-600"
+            >
+              <UploadCloud className="w-12 h-12 mb-4 text-primary" />
+              <p>Drop your image here</p>
+              <p className="mt-1 text-xs">or click to browse</p>
+              <p className="mt-2 text-xs text-gray-400">
+                Supports JPG, PNG, and WebP up to 10MB
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="width">Width (px)</Label>
+            <Input
+              id="width"
+              type="number"
+              min="1"
+              max="8000"
+              value={dimensions.width}
+              onChange={(e) => handleWidthChange(parseInt(e.target.value) || 1)}
+              disabled={!selectedFile || isProcessing}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="height">Height (px)</Label>
+            <Input
+              id="height"
+              type="number"
+              min="1"
+              max="8000"
+              value={dimensions.height}
+              onChange={(e) => handleHeightChange(parseInt(e.target.value) || 1)}
+              disabled={!selectedFile || isProcessing}
+            />
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="scale">Scale (%)</Label>
+            <span className="text-sm text-gray-500">{scale}%</span>
+          </div>
+          <Slider
+            id="scale"
+            min={1}
+            max={200}
+            step={1}
+            value={[scale]}
+            onValueChange={([value]) => onScaleChange(value)}
+            disabled={!selectedFile || isProcessing}
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <Label htmlFor="aspect-ratio">Lock Aspect Ratio</Label>
+          <Switch
+            id="aspect-ratio"
+            checked={aspectRatioLocked}
+            onCheckedChange={onAspectRatioLockChange}
+            disabled={!selectedFile || isProcessing}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="format">Output Format</Label>
+          <Select
+            value={selectedFormat}
+            onValueChange={onFormatChange}
+            disabled={!selectedFile || isProcessing}
+          >
+            <SelectTrigger id="format">
+              <SelectValue placeholder="Select format" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="jpg">JPEG</SelectItem>
+              <SelectItem value="png">PNG</SelectItem>
+              <SelectItem value="webp">WebP</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="default"
+          className="bg-[#10B981] hover:bg-emerald-600"
+          onClick={handleDownload}
+          disabled={!selectedFile || isProcessing}
+        >
+          {isProcessing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
+          )}
+          Download
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -30,8 +30,9 @@ async function comparePasswords(supplied: string, stored: string) {
 
 export function setupAuth(app: Express) {
   // Use environment variable for session secret, with a fallback
-  const sessionSecret = process.env.SESSION_SECRET || "optisizer-session-secret";
-  
+  const sessionSecret =
+    process.env.SESSION_SECRET || "optisizer-session-secret";
+
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
     resave: false,
@@ -40,7 +41,7 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-    }
+    },
   };
 
   app.set("trust proxy", 1);
@@ -59,7 +60,7 @@ export function setupAuth(app: Express) {
       } catch (error) {
         return done(error);
       }
-    }),
+    })
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
@@ -74,9 +75,23 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      // Ensure content-type is set
+      res.setHeader('Content-Type', 'application/json');
+
+      // Validate request body
+      if (!req.body || !req.body.username || !req.body.password) {
+        return res.status(400).json({ 
+          message: "Invalid request: username and password are required",
+          code: "INVALID_REQUEST"
+        });
+      }
+
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json({ 
+          message: "Username already exists",
+          code: "USERNAME_EXISTS"
+        });
       }
 
       const user = await storage.createUser({
@@ -85,7 +100,12 @@ export function setupAuth(app: Express) {
       });
 
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          return res.status(500).json({
+            message: "Login failed after registration",
+            code: "LOGIN_FAILED"
+          });
+        }
         // Don't send password back to client
         const { password, ...userWithoutPassword } = user;
         res.status(201).json(userWithoutPassword);
@@ -96,13 +116,37 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
+    // Ensure content-type is set
+    res.setHeader('Content-Type', 'application/json');
+
+    // Validate request body
+    if (!req.body || !req.body.username || !req.body.password) {
+      return res.status(400).json({ 
+        message: "Invalid request: username and password are required",
+        code: "INVALID_REQUEST"
+      });
+    }
+
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({
+          message: "Internal server error during authentication",
+          code: "AUTH_ERROR"
+        });
+      }
       if (!user) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res.status(401).json({ 
+          message: "Invalid username or password",
+          code: "INVALID_CREDENTIALS"
+        });
       }
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          return res.status(500).json({
+            message: "Login failed",
+            code: "LOGIN_FAILED"
+          });
+        }
         // Don't send password back to client
         const { password, ...userWithoutPassword } = user;
         res.status(200).json(userWithoutPassword);
@@ -111,9 +155,24 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", (req, res, next) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({
+        message: "Not logged in",
+        code: "NOT_AUTHENTICATED"
+      });
+    }
+
     req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
+      if (err) {
+        return res.status(500).json({
+          message: "Logout failed",
+          code: "LOGOUT_FAILED"
+        });
+      }
+      res.status(200).json({
+        message: "Logged out successfully",
+        code: "LOGOUT_SUCCESS"
+      });
     });
   });
 
